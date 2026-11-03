@@ -1,0 +1,28 @@
+{
+  "name": "cyber-runner",
+  "version": "0.1.0",
+  "description": "Offline camera-controlled 3D exhibition runner with separate player and operator displays.",
+  "author": "Rashmika Nishshanka",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "check": "node scripts/check-syntax.mjs",
+    "assets:check": "node scripts/check-assets.mjs",
+    "assets:check:public": "node scripts/check-assets.mjs --public",
+    "test": "node --test physics.test.mjs tracking.test.mjs motion.test.mjs animation-sync.test.mjs arcade.test.mjs powerups.test.mjs display-link.test.mjs",
+    "test:character": "node scripts/check-assets.mjs && node --test animation-sync.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rashmika-D-N/cyber-runner.git"
+  },
+  "homepage": "https://github.com/Rashmika-D-N/cyber-runner#readme",
+  "bugs": {
+    "url": "https://github.com/Rashmika-D-N/cyber-runner/issues"
+  }
+}

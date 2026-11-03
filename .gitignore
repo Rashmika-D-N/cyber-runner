@@ -1,0 +1,40 @@
+# Dependencies, caches and local settings
+node_modules/
+.npm/
+.cache/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+.codex/
+.agents/
+.aws/
+*.pem
+*.key
+
+# Local backups and generated exhibition material
+/backup-*/
+/outputs/
+/work/
+/dist/
+*.before-*
+*.bak
+*.tmp
+/public/game.pre3d.js
+/public/cyber-runner-poster.*
+
+# Download archives and unused pose model (the Full model IS tracked)
+/public/vendor/**/*.tgz
+/public/vendor/mediapipe/pose_landmarker_lite.task
+
+# Raw third-party characters / motion sources: see docs/ASSET-SETUP.md
+# Keep your existing files on disk; Git will not upload them.
+/public/assets/*.glb
+/public/assets/*.fbx
+/public/assets/runner-license.md

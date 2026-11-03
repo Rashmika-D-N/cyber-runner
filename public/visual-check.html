@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><title>Motion Runner • visual check</title><style>
+*{box-sizing:border-box}body{margin:0;background:#172329;color:#e6efec;font:14px system-ui;overflow:hidden}header{height:64px;display:flex;align-items:center;gap:16px;padding:12px 24px}button,select{background:#32474d;color:white;border:1px solid #5f797f;border-radius:6px;padding:9px 14px}canvas{display:block;width:100vw;height:calc(100vh - 104px)}output{display:block;height:40px;padding:10px 24px;font-size:12px;white-space:nowrap;overflow:hidden}strong{margin-right:auto}
+</style><script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js"}}</script></head><body>
+<header><strong>ROBOTICS LAB / VISUAL CHECK</strong><select id="pose"><option value="run">Running</option><option value="idle">Idle</option><option value="jump">Jump cycle</option><option value="duck">Crouching</option></select><select id="theme"><option value="lab">Robotics lab</option><option value="city">City</option><option value="core">Data core</option></select><select id="quality"><option value="balanced">Balanced</option><option value="high">High</option><option value="fast">Fast</option></select><button id="freeze">Freeze</button></header><canvas id="scene"></canvas><output id="stats">Loading the local human asset…</output>
+<script type="module">
+import {createScene} from './scene.js';import {jumpHeight} from './physics.js';
+const canvas=document.getElementById('scene'),view=createScene(canvas),pose=document.getElementById('pose'),stats=document.getElementById('stats');
+let frozen=false,elapsed=0,distance=12,last=performance.now(),samples=[],next=0;
+document.getElementById('freeze').onclick=()=>{frozen=!frozen;document.getElementById('freeze').textContent=frozen?'Resume':'Freeze';};
+document.getElementById('theme').onchange=e=>view.setTheme(e.target.value);
+new ResizeObserver(()=>view.resize(canvas.clientWidth,canvas.clientHeight)).observe(canvas);
+const obstacles=[{lane:1,z:19,type:'jump'},{lane:-1,z:38,type:'block'},{lane:0,z:64,type:'duck'}];
+const chips=Array.from({length:12},(_,i)=>({lane:0,z:15+i*4.5}));
+const courseStarts=[...obstacles,...chips].map(o=>o.z);function tick(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(!frozen){elapsed+=dt;if(pose.value!=='idle')distance+=dt*4.5;}samples.push(dt*1000);if(samples.length>240)samples.shift();
+[...obstacles,...chips].forEach((o,i)=>o.z=-6+((courseStarts[i]+6-(distance-12))%96+96)%96);const t=elapsed%3,bodyY=pose.value==='jump'?jumpHeight(t,.4,1.1):0;
+view.render({elapsed,distance,dt,bodyY,running:pose.value!=='idle',paused:frozen,speed:4.5,lane:0,visualLane:0,jumpUntil:0,duckUntil:pose.value==='duck'?elapsed+1:0,invincible:0,obstacles,chips,duration:1.1});
+if(now>next){next=now+500;const sorted=[...samples].sort((a,b)=>a-b);stats.textContent=JSON.stringify({fps:Math.round(1000/(samples.reduce((a,b)=>a+b,0)/samples.length)),p95:Math.round(sorted[Math.floor(sorted.length*.95)]),...view.diagnostics()});}requestAnimationFrame(tick);}
+await view.ready;
+const still=new URLSearchParams(location.search).get('still');
+if(still){const state={elapsed:3.4,distance:22,dt:1/60,bodyY:still==='jump'?1.6:0,running:true,paused:false,speed:4.5,lane:0,visualLane:0,jumpUntil:0,duckUntil:still==='duck'?4:0,invincible:0,obstacles,chips,duration:1.1};for(let i=0;i<60;i++)view.render(state);stats.textContent='GRAPHICS PREVIEW · Local human character and robotics lab · '+still+' pose (still image, not a performance benchmark)';document.querySelector('header').style.display='none';canvas.style.height='calc(100vh - 40px)';view.resize(canvas.clientWidth,canvas.clientHeight);view.render(state);}
+else requestAnimationFrame(tick);
+</script></body></html>

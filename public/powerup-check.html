@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cyber Runner - energy cell check</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#0b1619;color:#ecf4e7;font:15px system-ui}header{height:68px;display:flex;align-items:center;gap:20px;padding:12px 24px}header b{margin-right:auto}button{background:#b8ee56;border:0;border-radius:6px;padding:10px 16px;font:inherit;cursor:pointer}canvas{width:100vw;height:calc(100vh - 116px);display:block}output{display:block;padding:12px 24px;height:48px}#result{color:#c8ff78}</style>
+<script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.js"}}</script></head><body>
+<header><b>ENERGY CELL / VISUAL CHECK</b><span id="lives">Lives: 3</span><button id="collect" disabled>Run pickup check</button><button id="reset" disabled>Reset preview</button></header><canvas id="scene"></canvas><output id="result">Loading the local scene...</output>
+<script type="module">
+import {createScene} from './scene.js';import {EnergyCellRound} from './powerups.js';import {createGameAudio} from './audio.js';
+const canvas=document.getElementById('scene'),view=createScene(canvas),sound=createGameAudio(),round=new EnergyCellRound(()=>.1);
+const collect=document.getElementById('collect'),reset=document.getElementById('reset'),result=document.getElementById('result');
+let elapsed=22,distance=22,lives=3,last=performance.now(),collected=false;
+new ResizeObserver(()=>view.resize(canvas.clientWidth,canvas.clientHeight)).observe(canvas);
+function resetPreview(){round.reset();round.update({elapsed:22,dt:0,speed:4.5,obstacles:[],x:3,y:0});round.cells[0].z=12;collected=false;lives=3;document.getElementById('lives').textContent='Lives: 3';result.textContent='Preview fixture: one green energy cell. Normal rounds keep the 30% rarity limit.';collect.disabled=false;}
+collect.onclick=async()=>{await sound.unlock();const cell=round.cells[0];cell.z=8.65;const gained=round.update({elapsed,dt:.1,speed:4.5,obstacles:[],x:cell.lane*3,y:0});lives+=gained;const again=round.update({elapsed,dt:.1,speed:4.5,obstacles:[],x:cell.lane*3,y:0});document.getElementById('lives').textContent='Lives: '+lives;result.textContent=gained===1&&again===0&&lives===4?'PASS: 3 → 4 lives; cell removed; no duplicate award.':'FAIL: pickup did not award exactly one life';sound.effect('energy');collected=true;collect.disabled=true;};reset.onclick=resetPreview;
+await view.ready;collect.disabled=reset.disabled=false;resetPreview();
+function tick(now){const dt=Math.min(.05,(now-last)/1000);last=now;elapsed+=dt;view.render({elapsed,distance,dt,speed:4.5,visualLane:0,lane:0,running:false,paused:false,bodyY:0,duckUntil:0,invincible:0,obstacles:[],chips:[],energyCells:round.cells,duration:1.1});requestAnimationFrame(tick);}requestAnimationFrame(tick);
+</script></body></html>

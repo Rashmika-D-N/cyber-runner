@@ -1,0 +1,86 @@
+/* Player display: the 3D scene and its HUD fill the entire window. */
+.display-tools { display: none; }
+body.game-screen { display: block; height: 100dvh; overflow: hidden; }
+.game-screen > header, .game-screen > footer, .game-screen aside { display: none; }
+.game-screen main { display: block; width: 100%; height: 100%; padding: 0; }
+.game-screen .arena { min-height: 0; height: 100%; border: 0; border-radius: 0; }
+.game-screen #start, .game-screen .hint, .game-screen .bottom button { display: none; }
+.game-screen .hud { inset: 28px 32px auto; }
+.game-screen .bottom { bottom: 24px; }
+.game-screen .display-tools { position: absolute; z-index: 10; bottom: 18px; right: 22px; display: flex; align-items: center; gap: 8px; padding: 8px; background: #09141ee8; border: 1px solid #34505e; border-radius: 9px; transition: opacity .2s; }
+.display-tools span { font-size: 11px; color: #b1c6d1; margin: 0 8px; }
+.game-screen.is-playing .display-tools:not(:hover):not(:focus-within) { opacity: 0; pointer-events: none; }
+.game-screen.is-playing .arena:hover .display-tools { opacity: 1; pointer-events: auto; }
+
+/* Operator display: large camera feed and every control, without another 3D renderer. */
+.operator-screen { width: 100%; height: 100dvh; display: grid; grid-template-rows: 62px minmax(0, 1fr) 28px; overflow: hidden; }
+.operator-screen header { height: auto; padding: 0 24px; gap: 16px; flex-wrap: nowrap; min-height: 0; }
+.operator-screen .brand { flex: none; margin: 0; white-space: nowrap; }
+.operator-label { flex: 1; font-size: 10px; letter-spacing: 1.8px; color: #819eae; }
+.connection { padding: 8px 12px; border-radius: 20px; font-size: 11px; background: #452c16; color: #ffd28c; white-space: nowrap; }
+.connection.connected { color: #ceff8b; background: #21331f; }
+.operator-main { display: flex; flex-direction: column; padding: 16px 24px 12px; gap: 14px; min-height: 0; }
+.session-bar { flex: none; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px 24px; padding: 15px 20px; background: #101a20; border: 1px solid #28373e; border-radius: 12px; }
+.operator-hud { display: flex; gap: clamp(20px, 3vw, 60px); }
+.operator-hud small { display: block; font-size: 9px; letter-spacing: 1.5px; color: #90aab8; }
+.operator-hud strong { display: block; font-size: 24px; margin-top: 4px; }
+.round-controls { display: flex; gap: 8px; align-items: center; }
+.round-controls #start { margin: 0; padding: 12px 20px; font-size: 14px; }
+#gameState { font-size: 12px; color: #ceff53; margin-right: 10px; }
+#operatorNotice { grid-column: 1 / -1; font-size: 12px; color: #a7beca; margin: 0; }
+.operator-screen aside { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 26px; gap: 14px; }
+.operator-screen aside > .panel { grid-row: 1; grid-column: auto; margin: 0; padding: 20px; min-height: 0; min-width: 0; }
+.operator-screen aside > .panel:first-child { display: flex; flex-direction: column; }
+.operator-screen aside > .panel:nth-child(2), .operator-screen aside > .panel:nth-child(3) { overflow: auto; }
+.operator-screen .legend { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: center; justify-content: center; gap: 30px; font-size: 9px; }
+.operator-screen .preview:not(.expanded) { flex: 1; min-height: 160px; max-height: none; height: auto; aspect-ratio: auto !important; }
+.operator-screen h2 { font-size: 16px; margin-bottom: 16px; }
+.operator-screen #status { font-size: 12px; min-height: 34px; margin: 12px 0; }
+.operator-screen .note { font-size: 12px; line-height: 1.6; }
+.operator-screen label { font-size: 13px; margin-top: 18px; }
+.operator-screen input[type=range] { height: 18px; margin-top: 8px; }
+.operator-screen .metric { font-size: 12px; margin-top: 15px; }
+.operator-screen #laneControls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; margin: 12px 0 20px; }
+.operator-screen #laneControls label { font-size: 12px; margin-top: 12px; }
+.operator-screen #expandPreview, .operator-screen #resetLines { width: 100%; margin-top: 14px; }
+.operator-selects { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.operator-selects select, .operator-selects #theme { width: 100%; max-width: none; float: none; font-size: 12px; padding: 9px 12px; }
+.operator-screen .audio-controls { margin: 14px 0 18px; flex-wrap: wrap; }
+.operator-screen .audio-controls label { margin: 0 0 0 5px; font-size: 9px; }
+.operator-screen .audio-controls input[type=range] { height: 10px; margin-top: 3px; }
+.operator-screen footer { padding: 0 24px; height: auto; align-items: center; gap: 16px; font-size: 9px; }
+.operator-screen .preview.expanded { max-height: none; }
+@media (max-width: 1450px), (max-height: 850px) {
+  .operator-screen { grid-template-rows: 52px minmax(0, 1fr) 24px; }
+  .operator-screen header { padding: 0 16px; gap: 10px; }
+  .operator-screen .operator-label { font-size: 9px; letter-spacing: 1px; }
+  .operator-main { padding: 10px 16px; gap: 10px; }
+  .session-bar { padding: 10px 14px; gap: 8px 16px; }
+  .operator-hud strong { font-size: 21px; }
+  .operator-screen aside { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; grid-template-rows: minmax(0, 1fr) 22px; }
+  .operator-screen aside > .panel { padding: 13px; }
+  .operator-screen h2 { font-size: 14px; margin-bottom: 10px; }
+  .operator-screen .note { font-size: 10px; line-height: 1.4; }
+  .operator-screen label { font-size: 11px; margin-top: 10px; }
+  .operator-screen .metric { font-size: 11px; margin-top: 10px; }
+  .operator-screen input[type=range] { height: 14px; margin-top: 4px; }
+  .operator-screen #laneControls { gap: 4px 12px; margin: 8px 0 12px; }
+  .operator-screen #laneControls label { font-size: 11px; margin-top: 9px; }
+  .operator-screen #expandPreview, .operator-screen #resetLines { margin-top: 10px; }
+  .operator-selects { gap: 6px; }
+  .operator-selects select, .operator-selects #theme { padding: 7px 9px; font-size: 11px; }
+  .operator-screen .audio-controls { margin: 10px 0; gap: 5px; }
+  .operator-screen .audio-controls button { padding: 7px; font-size: 10px; }
+  .operator-screen #status { font-size: 11px; min-height: 30px; margin: 9px 0; }
+}
+@media (max-width: 1000px) {
+  .operator-screen { height: auto; min-height: 100dvh; overflow: auto; }
+  .operator-screen header { flex-wrap: wrap; padding: 12px; }
+  .operator-label { display: none; }
+  .operator-screen .session-bar { grid-template-columns: 1fr; }
+  .operator-screen aside { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto; }
+  .operator-screen aside > .panel:first-child { grid-column: 1 / -1; grid-row: 1; }
+  .operator-screen .preview:not(.expanded) { min-height: 320px; }
+  .operator-screen aside > .panel:nth-child(2), .operator-screen aside > .panel:nth-child(3) { grid-row: 2; }
+  .operator-screen .legend { grid-row: 3; flex-wrap: wrap; gap: 10px; }
+}

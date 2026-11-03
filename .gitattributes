@@ -1,0 +1,17 @@
+* text=auto
+*.js text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.svg text eol=lf
+*.bat text eol=crlf
+*.jpg binary
+*.png binary
+*.wasm binary
+*.task binary
+*.glb binary
+# Preserve upstream bytes used by the offline asset checksum manifest.
+public/vendor/** -text
