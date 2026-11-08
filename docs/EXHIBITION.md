@@ -14,22 +14,29 @@ Use 1920×1080 and Full screen. Start with Balanced graphics, runner speed 4–5
 
 1. In Windows display settings, use **Extend** (Win + P), rather than duplicating the same screen. Open the game in Chrome or Edge at http://127.0.0.1:5173/.
 2. Select **Separate screens**. The current window becomes the player display, and a new **Controls & camera** window opens. If the browser blocks it, allow pop-ups for this local address and try again.
-3. Move the player window to the exhibition monitor, then select **Full screen** there. Keep the controls window visible on your laptop or second monitor. Both layouts fit 1920×1080 without scrolling.
-4. In the control window, enable the camera, align the red lane guides with the floor tape, and calibrate the player. Choose **Body movement**, then **Start round**. Switching out of single-screen mode stops the old camera, so enable and calibrate it in its new control window.
-5. Start, pause, resume, restart, speed, obstacle spacing, jump sensitivity, lane stability, action duration, scenery, graphics, music and volume are all available in the operator window. It also shows the live camera, tracked skeleton, lane guides, score, lives, timer and player-display performance.
+3. Move the player window to the exhibition monitor, then choose **Display setup → Full screen** there. Keep the controls window visible on your laptop. Both layouts fit 1920×1080 without scrolling.
+4. On the laptop, enable the camera. This selects **Body movement** on both screens. Open **Set tracking area**, frame all three lanes with room for upper-body movement and a raised hand, then choose **Use area** and align the lane guides.
+5. Step onto the middle tape, face the camera, and stand still. When the big screen says **Raise one hand to start**, hold either hand beside your face for one second. Filling the bar starts **3–2–1** automatically and the runner moves on **GO**.
+6. The laptop retains all round controls and settings, including speed, obstacle spacing, sensitivity, scenery, graphics and volume. Its live camera, tracked skeleton and lane guides remain on the laptop.
 
 Only the player window renders the 3D game. The operator window handles local camera inference and audio; it sends small movement and setting messages over a same-origin BroadcastChannel. Video frames are never transmitted to the other window or over the internet. Both windows must use the same browser profile and the same localhost address; the session in the URL pairs the correct windows.
 
-Closing or losing the controls pauses the round. Reopen it with **Open controls** on the player display. **Show game window** in the operator window brings back the player display. Reloading the game resets the round but keeps the session and game settings; the connection recovers automatically. Body mode needs a fresh tracked pose before starting or resuming. Keep both windows visible, not minimized or in background tabs, to avoid browser camera/render throttling. Switching focus between two visible windows does not pause the game.
+Closing or losing the controls pauses the round. Reopen them with **Display setup → Open controls** on the player display. **Show game window** on the laptop brings back the player display. Reloading the game resets the round but keeps the session and game settings; the connection recovers automatically. Hand gestures need a current player lock. Manual start, resume and new round work with an empty camera view or the camera off. Keep both windows visible, not minimized or in background tabs, to avoid browser camera/render throttling. Switching focus between two visible windows does not pause the game.
 
-The player display's **Single screen** button restores the original combined interface. Its display setup buttons fade during play and reappear when the pointer moves over the game. Floor alignment remains saved in the browser. Music and sound effects run in the operator window in two-screen mode, activated by its Start button; they use the computer's selected audio output.
+Choose **Display setup → Single screen** to restore the combined interface. Floor alignment remains saved in the browser. In two-screen mode, click once in the laptop controls (for example, **Enable camera**) to enable music and effects before starting on the big screen. Audio uses the computer's selected output.
+
+The big screen keeps **Start manually**, **Pause / Resume** and **New round** in the lower right during body control. Resuming keeps the current score. **New round** resets it. Lower your hand between holds to resume or play again. Selecting **Keyboard** switches back to keyboard controls.
+
+A manual round starts running on **GO**, even before anyone is tracked. The timer and obstacles advance while the player walks into position. The first player to lock on joins the current run. Tracking-loss pausing applies after they join. Manual resume also lets the operator continue while the player returns.
 
 Run `npm test` for the game and display-link checks, and `npm run check` for syntax checks. Display-link checks cover session isolation, command delivery, stale/duplicate gesture rejection, pose age and configuration validation. Physical camera calibration and dual-monitor performance should also be checked with the exhibition setup.
 
 ## Floor alignment
 Place three tape lines at the lane CENTERS. Fix the camera. Enable it and enlarge the preview. Match the guides' near/far ends to the tape. The view is mirrored; screen-left is game-left. Alignment is manual and saves in this browser for this localhost address. Re-align if the camera moves.
 
-Calibrate each player upright with shoulders and feet in view, then select Body movement. Standing on each tape line selects that lane directly. Boundary hysteresis and an 85 ms confirmation reduce lane jitter. The renderer preserves the existing three-lane controls.
+Have one player face the camera and stand comfortably for about one second. Visible shoulders and hips, or a face and both shoulders, can establish the lock. The game uses the torso to change lanes, jump and duck when feet are out of view. Visible ankles refine the player’s position against the floor guides. Hold either hand beside the face until the countdown appears.
+
+The detector receives only pixels inside the selected rectangle. It can return two candidate poses. The tracker compares position, recent motion, body proportions and shirt colour in camera memory. During an ambiguous overlap it holds the last lane and suppresses gestures. After about 1.8 seconds without a match the round pauses and the lock clears. The next player steps in alone and is picked up automatically. **Release player** lets the operator start selection immediately. Use **New round** for their game.
 
 ## Tracking and game physics
 MediaPipe Full 0.10.21 runs locally in a worker with one frame in flight and a 640-pixel inference width. Adaptive smoothing uses torso tracking when ankles briefly disappear. Prolonged tracking loss pauses the game. Processing time and result age are displayed separately; these are not a complete end-to-end latency measurement.
@@ -41,7 +48,7 @@ Keyboard: arrows / WASD, Space to jump, P to pause. Tune speed, obstacle spacing
 ## Checks
 Run `npm test`, `npm run assets:check` and `npm run check`. The camera-free worker check is /worker-check.html. The development-only /visual-check.html page shows run, idle, jump and crouch motion with visible rendering statistics. Its synthetic course is for visual inspection, not a camera-latency benchmark.
 
-Before the exhibition, disconnect internet, restart the server/browser, enable and calibrate the camera, try all lanes/jumps/squats, and leave view to verify the pause. Test with spectators outside the camera's player area. Local backup folders are excluded from Git.
+Before the exhibition, disconnect the internet, restart the server/browser and enable the camera. Walk all three lanes, jump and duck, then let the next player step in. Check the crop with a spectator passing outside it.
 
 ## Ground and stride synchronization
 The painted floor, all surface maps, lab bays and obstacles move toward the camera together. Rendering interpolates travelled distance and uses it to sample the human's running clip. RUN_CYCLE_DISTANCE in public/motion.js controls metres per complete left/right animation cycle; keep your preferred calibration there. This prevents a separate animation clock from slipping behind the ground during slower frames or speed changes. Pausing stops both.
@@ -52,7 +59,7 @@ Gold circuit coins use shared 3D geometry, a hexagonal illuminated core and a su
 
 Start a round to activate browser audio. An original 116 BPM synthesized arcade loop and coin, jump, duck, lane, impact and round-end effects are generated entirely by Web Audio; no external soundtrack, audio files or network downloads are required. Music, effects and volume controls are in the header and persist locally. Music stops when paused, when the tab is hidden and when the round ends.
 
-Every start and resume displays 3, 2, 1, GO with matching tones. The round timer, movement and collisions wait until the countdown finishes. If the game is paused during a countdown, resume gives a fresh three seconds. Character assets and body calibration must be ready before starting.
+Every start and resume displays 3, 2, 1, GO with matching tones. The round timer, movement and collisions wait until the countdown finishes. If the game is paused during a countdown, resume gives a fresh three seconds. Character assets must be ready before starting.
 
 ## Rare energy cell
 The green energy cell awards one additional life, including increasing three lives to four. Each round has a 30% chance of one cell, scheduled to appear after 16–28 seconds of active play, followed by the normal approach time. Pauses and countdowns do not advance that clock. There is at most one cell per round, and missed cells disappear after passing the player.

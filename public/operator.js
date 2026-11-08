@@ -8,7 +8,11 @@ const session = validSession(params.get('session')) ? params.get('session') : cr
 if (!params.has('session')) { params.set('session', session); history.replaceState(null, '', '?' + params); }
 window.name = 'cyber-runner-controls-' + session;
 const audio = createGameAudio(), settings = {};
+// A round can now start on the player display. A camera/setup click on the
+// laptop unlocks this window's audio before the first remote countdown.
+document.addEventListener('click', () => { void audio.unlock(); }, {capture: true, once: true});
 let lastContact = 0, gameInstance = '', latestState = null, configured = false, gameWindow = window.opener;
+let pendingController = null;
 let operatorVisible = !document.hidden;
 
 function readSettings() {
@@ -47,11 +51,13 @@ function drawState(state) {
   $('action').textContent = state.action; $('performance').textContent = state.performance;
   $('gameState').textContent = !state.ready ? 'Loading runner…' : state.paused ? 'Paused'
     : state.countdown ? 'Starting in ' + state.countdown : state.running ? 'Running' : state.distance > 0 ? 'Round finished' : 'Ready';
-  $('start').textContent = state.running ? 'Start new round →' : 'Start round →';
+  $('start').textContent = $('mode').value === 'body' ? 'Start manually' : 'Start round →';
   $('pause').textContent = state.paused ? 'Resume · 3–2–1' : 'Pause';
   $('operatorNotice').textContent = state.notice || 'Game on the player’s screen. Camera and lane guides here. Keep both windows visible.';
-  $('start').disabled = $('restart').disabled = !connected() || !state.ready;
-  $('pause').disabled = !connected() || !state.running;
+  const blocked = !connected() || !state.ready || !!(state.manualBlockReason ?? state.roundBlockReason);
+  $('start').disabled = blocked || state.running;
+  $('restart').disabled = blocked || (!state.running && !state.distance);
+  $('pause').disabled = !connected() || !state.running || (state.paused && blocked);
   audio.setPlaying(connected() && operatorVisible && state.running && !state.paused && !state.countdown);
 }
 
@@ -60,7 +66,14 @@ const link = createDisplayLink({role: 'controls', session, receive(type, payload
   if (type === 'welcome') {
     if (payload.instance !== gameInstance) {
       if (configured) sendConfig();
-      else configured = applyConfig(payload.config);
+      else {
+        configured = applyConfig(payload.config);
+        if (configured && pendingController !== null) {
+          $('mode').value = pendingController;
+          pendingController = null;
+          sendConfig();
+        }
+      }
       gameInstance = payload.instance;
       // A reloaded player display needs fresh calibration state, never a queued gesture.
       sendPose(motion.state);
@@ -82,7 +95,8 @@ const link = createDisplayLink({role: 'controls', session, receive(type, payload
 }});
 
 function sendPose(state) {
-  link.send('pose', {calibrated: state.calibrated, lane: state.lane,
+  if (!operatorVisible) return;
+  link.send('pose', {calibrated: state.calibrated, lane: state.lane, tracking: state.tracking, hand: state.hand,
     age: state.lastPose ? Math.max(0, performance.now() - state.lastPose) : 1e9});
 }
 const motion = createMotionControls({settings,
@@ -92,7 +106,11 @@ const motion = createMotionControls({settings,
 });
 
 for (const key of Object.keys(settings)) $(key).oninput = () => { readSettings(); sendConfig(); };
-for (const key of ['theme', 'quality', 'mode']) $(key).onchange = () => { sendConfig(); sendPose(motion.state); };
+for (const key of ['theme', 'quality', 'mode']) $(key).onchange = () => {
+  if (key === 'mode' && !configured) pendingController = $('mode').value;
+  sendConfig();
+  sendPose(motion.state);
+};
 for (const [id, key] of [['musicToggle', 'music'], ['effectsToggle', 'effects']]) $(id).onclick = () => {
   void audio.unlock(); audio.setPreference(key, !audio.settings[key]); audioControls(); sendConfig();
 };
@@ -128,6 +146,7 @@ addEventListener('keydown', event => {
 document.addEventListener('visibilitychange', () => {
   operatorVisible = !document.hidden;
   if (!operatorVisible) { audio.setPlaying(false); link.send('suspend'); }
+  else sendPose(motion.state);
 });
 const timer = setInterval(() => {
   link.send('hello');

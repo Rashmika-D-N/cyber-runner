@@ -14,7 +14,7 @@
     "check": "node scripts/check-syntax.mjs",
     "assets:check": "node scripts/check-assets.mjs",
     "assets:check:public": "node scripts/check-assets.mjs --public",
-    "test": "node --test physics.test.mjs tracking.test.mjs motion.test.mjs animation-sync.test.mjs arcade.test.mjs powerups.test.mjs display-link.test.mjs",
+    "test": "node --test physics.test.mjs tracking.test.mjs motion.test.mjs animation-sync.test.mjs arcade.test.mjs powerups.test.mjs display-link.test.mjs player-guide.test.mjs",
     "test:character": "node scripts/check-assets.mjs && node --test animation-sync.test.mjs"
   },
   "repository": {

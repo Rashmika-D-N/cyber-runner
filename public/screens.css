@@ -4,13 +4,115 @@ body.game-screen { display: block; height: 100dvh; overflow: hidden; }
 .game-screen > header, .game-screen > footer, .game-screen aside { display: none; }
 .game-screen main { display: block; width: 100%; height: 100%; padding: 0; }
 .game-screen .arena { min-height: 0; height: 100%; border: 0; border-radius: 0; }
-.game-screen #start, .game-screen .hint, .game-screen .bottom button { display: none; }
+.game-screen #start, .game-screen .bottom button { display: none; }
 .game-screen .hud { inset: 28px 32px auto; }
-.game-screen .bottom { bottom: 24px; }
-.game-screen .display-tools { position: absolute; z-index: 10; bottom: 18px; right: 22px; display: flex; align-items: center; gap: 8px; padding: 8px; background: #09141ee8; border: 1px solid #34505e; border-radius: 9px; transition: opacity .2s; }
-.display-tools span { font-size: 11px; color: #b1c6d1; margin: 0 8px; }
-.game-screen.is-playing .display-tools:not(:hover):not(:focus-within) { opacity: 0; pointer-events: none; }
-.game-screen.is-playing .arena:hover .display-tools { opacity: 1; pointer-events: auto; }
+.game-screen .bottom { bottom: 32px; right: auto; pointer-events: none; }
+.game-screen .display-tools {
+  position: absolute; z-index: 10; right: clamp(12px, 2vw, 32px); bottom: clamp(12px, 2vh, 24px);
+  display: flex; align-items: center; gap: 12px; padding: 7px 12px 7px 7px;
+  background: #09141ef5; border: 1px solid #42606e; border-radius: 10px;
+}
+.player-round-buttons { display: flex; gap: 6px; }
+.player-round-buttons button {
+  min-height: 48px; padding: 0 clamp(12px, 1.2vw, 24px);
+  font-size: clamp(15px, 1vw, 20px); font-weight: 700; white-space: nowrap; touch-action: manipulation;
+}
+.display-setup { position: relative; border-left: 1px solid #34505e; padding-left: 12px; }
+.display-setup summary { cursor: pointer; color: #c2d3dd; font-size: 13px; line-height: 44px; white-space: nowrap; }
+.display-tools :is(button, summary):focus-visible { outline: 2px solid #ceff53; outline-offset: 2px; }
+.display-setup-panel {
+  position: absolute; right: 0; bottom: calc(100% + 10px);
+  background: #09141ef5; border: 1px solid #42606e; border-radius: 8px; padding: 12px;
+}
+.display-setup-panel { z-index: 1; display: grid; gap: 8px; width: 220px; }
+.display-setup-panel span { font-size: 12px; color: #c2d3dd; }
+.display-setup-panel button { min-height: 40px; }
+@media (max-width: 760px) {
+  .game-screen .bottom { bottom: 118px; }
+  .game-screen .display-tools { max-width: calc(100% - 20px); right: 10px; gap: 6px; padding: 5px; }
+  .player-round-buttons { gap: 3px; }
+  .player-round-buttons button { min-height: 44px; padding: 0 8px; font-size: 14px; }
+  .display-setup { padding-left: 6px; }
+  .display-setup summary { font-size: 12px; }
+}
+
+/* Size player instructions against the arena, whether it's a panel or a whole projector. */
+.arena { container-type: inline-size; }
+.arena .hud { z-index: 4; }
+.arena .bottom { z-index: 5; }
+.arena:has(#overlay:not(.hidden)) #action { visibility: hidden; }
+.arena #overlay {
+  z-index: 2; padding: 70px 4% 76px; color: #f6f9fb;
+  background: linear-gradient(180deg, #09131c70, #0710189c);
+}
+.guide-card {
+  width: min(100%, 1120px); padding: clamp(16px, 2.1cqw, 40px) clamp(18px, 3cqw, 48px);
+  background: #0b171ff5; border: 1px solid #516672; border-radius: 16px; text-align: left;
+}
+.guide-brand, #guideLabel {
+  margin: 0; font-size: clamp(14px, 1.25cqw, 24px); font-weight: 750; line-height: 1.2;
+}
+.guide-brand { color: #d0e0e8; letter-spacing: .14em; }
+#guideLabel { margin-top: clamp(14px, 1.5cqw, 26px); color: #ceff70; }
+.arena #guideTitle {
+  margin: .15em 0 .18em; color: white; font-size: clamp(32px, 4.5cqw, 80px);
+  letter-spacing: -.035em; line-height: 1.05; text-wrap: balance;
+}
+.arena #message, .pickup-guide, #roundResult { font-size: clamp(17px, 1.6cqw, 30px); line-height: 1.32; }
+.arena #message { margin: 0; color: #f0f5f8; }
+#roundResult { margin: .45em 0 0; font-weight: 700; color: #ffdb84; }
+#handProgress {
+  display: block; width: min(100%, 520px); height: clamp(12px, 1cqw, 20px);
+  margin: 14px 0 0; border: 1px solid #8296a2; border-radius: 12px; overflow: hidden;
+  background: #304453; accent-color: #ceff70; appearance: none;
+}
+#handProgress::-webkit-progress-bar { background: #304453; }
+#handProgress::-webkit-progress-value { background: #ceff70; }
+#handProgress::-moz-progress-bar { background: #ceff70; }
+.move-guide {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(10px, 2cqw, 36px);
+  list-style: none; border-top: 1px solid #52636c; padding: clamp(12px, 1.5cqw, 25px) 0 0;
+  margin: clamp(16px, 1.8cqw, 28px) 0 0;
+}
+.move-guide li { display: grid; align-content: start; gap: 4px; }
+.move-guide strong { color: white; font-size: clamp(19px, 1.8cqw, 34px); line-height: 1.1; }
+.move-guide i { color: #8ee6f4; font-style: normal; }
+.move-guide span, .pickup-guide { color: #dce6ec; font-size: clamp(15px, 1.35cqw, 26px); line-height: 1.3; }
+.pickup-guide { margin: .85em 0 0; }
+.pickup-guide b:first-child { color: #ffdb84; }
+.pickup-guide b:last-child { color: #c8ff80; }
+.guide-card #start { margin: 14px 0 0; padding: 10px 20px; }
+.arena #countdown { background: #08121dc7; }
+.arena #countdown.go { background: #08121d6e; }
+.arena #countdown > span { font-size: clamp(20px, 2cqw, 36px); }
+.arena #countdownNote { font-size: clamp(22px, 2.4cqw, 44px); font-weight: 700; padding: 0 4%; }
+#runGuide {
+  position: absolute; z-index: 3; top: clamp(82px, 10vh, 110px); left: 50%; transform: translateX(-50%);
+  width: max-content; max-width: 94%; display: grid; gap: 2px; padding: 8px clamp(14px, 1.4cqw, 26px);
+  border: 1px solid #637b87; border-left: 5px solid #88dee9; border-radius: 8px;
+  background: #0b171ff5; color: white; text-align: center; pointer-events: none;
+}
+#runTitle { font-size: clamp(19px, 1.9cqw, 36px); line-height: 1.12; }
+#runDetail { font-size: clamp(15px, 1.35cqw, 26px); line-height: 1.25; color: #edf3f6; }
+#runGuide:is([data-kind="block"], [data-kind="duck"], [data-kind="jump"], [data-kind="tracking"]) { border-left-color: #ffcf72; }
+.arena #handProgress[hidden], #runGuide[hidden] { display: none; }
+.arena #powerupNotice { top: auto; bottom: clamp(80px, 10vh, 106px); }
+.game-screen .bottom span { font-size: clamp(15px, 1.2cqw, 24px); text-shadow: 0 1px 4px #000; }
+@container (max-width: 570px) {
+  .arena #overlay { padding: 62px 12px 58px; }
+  .guide-card { padding: 14px; }
+  .move-guide { grid-template-columns: 1fr; gap: 6px; }
+  .move-guide li { display: flex; gap: .5em; align-items: baseline; }
+  .move-guide strong { min-width: 4em; font-size: 17px; }
+  #guideLabel { margin-top: 8px; }
+}
+@media (max-height: 630px) {
+  .guide-card { padding-block: 12px; }
+  .guide-brand { display: none; }
+  #guideLabel { margin-top: 0; }
+  .arena #guideTitle { font-size: clamp(28px, 3.7cqw, 48px); }
+  .move-guide { padding-top: 9px; margin-top: 10px; }
+}
 
 /* Operator display: large camera feed and every control, without another 3D renderer. */
 .operator-screen { width: 100%; height: 100dvh; display: grid; grid-template-rows: 62px minmax(0, 1fr) 28px; overflow: hidden; }
@@ -50,6 +152,37 @@ body.game-screen { display: block; height: 100dvh; overflow: hidden; }
 .operator-screen .audio-controls input[type=range] { height: 10px; margin-top: 3px; }
 .operator-screen footer { padding: 0 24px; height: auto; align-items: center; gap: 16px; font-size: 9px; }
 .operator-screen .preview.expanded { max-height: none; }
+
+/* Both camera pages use the same mirrored crop and full-frame tape coordinates. */
+.camera-image { overflow: hidden; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.preview .camera-image video, .preview .camera-image canvas { position: absolute; object-fit: fill; max-width: none; }
+.area-editor {
+  width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; box-sizing: border-box;
+  margin: auto; padding: 22px; border: 1px solid #48616c; border-radius: 12px; background: #101a20; color: #e5f0f5;
+}
+.area-editor::backdrop { background: #03090dd9; }
+.area-editor h2 { font-size: 20px; margin: 0 0 8px; }
+.area-editor p { color: #b8cbd5; font-size: 14px; line-height: 1.45; margin: 0 0 14px; }
+.area-frame {
+  --image-ratio: 1.77778; width: min(100%, calc(52dvh * var(--image-ratio))); aspect-ratio: var(--image-ratio);
+  margin: auto; position: relative; overflow: hidden; background: #081116; outline: 1px solid #45616b;
+  cursor: crosshair; touch-action: none; user-select: none;
+}
+.area-frame video { display: block; width: 100%; height: 100%; object-fit: fill; transform: scaleX(-1); }
+.area-no-video { position: absolute; inset: 44% 8px auto; text-align: center; color: #a9bdc8; pointer-events: none; }
+.area-box { position: absolute; border: 2px solid #ceff53; box-shadow: 0 0 0 100vmax #02090db3; pointer-events: none; }
+.area-box i { position: absolute; width: 15px; height: 15px; background: #ceff53; border-radius: 2px; pointer-events: auto; }
+.area-box [data-corner="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+.area-box [data-corner="ne"] { right: 0; top: 0; cursor: nesw-resize; }
+.area-box [data-corner="sw"] { left: 0; bottom: 0; cursor: nesw-resize; }
+.area-box [data-corner="se"] { right: 0; bottom: 0; cursor: nwse-resize; }
+.area-fine { margin: 14px 0; }
+.area-fine summary { cursor: pointer; color: #c6d8df; font-size: 14px; }
+.area-sliders { display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; }
+.area-editor .area-sliders label { font-size: 12px; margin: 10px 0 0; }
+.area-actions { display: flex; gap: 8px; align-items: center; }
+.area-actions button { min-height: 40px; }
+.area-actions button:first-child { margin-right: auto; }
 @media (max-width: 1450px), (max-height: 850px) {
   .operator-screen { grid-template-rows: 52px minmax(0, 1fr) 24px; }
   .operator-screen header { padding: 0 16px; gap: 10px; }

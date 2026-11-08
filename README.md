@@ -47,7 +47,11 @@ Once the repository and local character are present, the game runs offline, incl
 | P | Pause / resume |
 | Enter | Start when no round is running |
 
-For body controls, enable the camera, keep the full body visible, align the guides with tape marking the **centres** of three lanes, and calibrate while upright. Select **Body movement**, then start. Calibrate each new player. Lane alignment is saved in the browser.
+For body controls, enable the camera and choose **Set tracking area**. Frame all three lanes with room for the player’s upper body, jumps and raised hand. Include the tape if visible so you can align the guides to the **centres** of the lanes. The browser saves both settings. The game can lock on and use torso movement with the feet out of view.
+
+Enabling the camera selects **Body movement** automatically. Step onto the middle tape, face the camera, and stand still until **Player locked** appears. **Hold either hand beside your face for one second.** When the bar fills, the game counts down 3–2–1 and starts running on GO. The same gesture resumes a paused round or starts another after the results. Lower your hand between holds.
+
+**Start manually**, **Resume** and **New round** also work before a player is visible, including with the camera off. The round starts after the countdown and the timer runs immediately. In body mode, the camera takes over when a player enters and locks on. Tracking-loss pausing begins once that player has joined.
 
 The camera drives game gestures; it is not full-body motion capture or a biomechanical simulation. Camera frames are processed on the device.
 
@@ -55,8 +59,8 @@ The camera drives game gestures; it is not full-body motion capture or a biomech
 
 1. Use **Extend** in Windows display settings (`Win+P`).
 2. Select **Separate screens**. Allow the local popup if prompted.
-3. Move the game window to the player display and select **Full screen**.
-4. Keep **Controls & camera** visible on the operator display. Enable and calibrate the camera there; all settings and round controls are available.
+3. Move the game window to the player display and choose **Display setup → Full screen**. The start, pause and new round buttons also let an operator control the round manually.
+4. Keep **Controls & camera** visible on the laptop. Set the tracking area there. Its round controls operate the same game.
 
 Both layouts are designed for 1920×1080 without scrolling. Use the same browser profile and address for both windows. The operator window handles pose tracking and audio; only the player window renders 3D. Closing the controls or losing tracking pauses the game. **Single screen** restores the combined view.
 

@@ -1,13 +1,49 @@
 import {createDisplayLink, cleanConfig, validSession, readRemotePose, LINK_TIMEOUT} from './display-link.js';
 
-export function createGameScreens({snapshot, config, configure, command, action, pause, stopCamera, audio, status}) {
+export function createGameScreens({snapshot, config, configure, command, action, onPose, pause, stopCamera, audio, status}) {
   const $ = id => document.getElementById(id);
   const params = new URLSearchParams(location.search);
   let remote = params.get('screen') === 'game';
   let session = validSession(params.get('session')) ? params.get('session') : crypto.randomUUID();
   const instance = crypto.randomUUID();
   let link, controlsWindow, lastContact = 0, wasConnected = false, connectionNotice = false;
-  let motion = {calibrated: false, lane: 0, lastPose: 0};
+  const emptyPose = tracking => ({calibrated: false, lane: 0, lastPose: 0, tracking});
+  let motion = emptyPose('off');
+  function receivePose(next) { motion = next; onPose(next); }
+  const roundButtons = {start: $('displayStart'), pause: $('displayPause'), restart: $('displayRestart')};
+  const setupMenu = $('displayTools').querySelector('details');
+
+  function showRoundControls(state) {
+    const blocked = !!(state.manualBlockReason ?? state.roundBlockReason);
+    const startLabel = $('mode').value === 'body' ? 'Start manually' : 'Start round';
+    if (roundButtons.start.textContent !== startLabel) roundButtons.start.textContent = startLabel;
+    roundButtons.start.disabled = blocked || state.running;
+    roundButtons.pause.disabled = !state.running || (state.paused && blocked);
+    roundButtons.restart.disabled = blocked || (!state.running && !state.distance);
+    const pauseLabel = state.paused ? 'Resume' : 'Pause';
+    if (roundButtons.pause.textContent !== pauseLabel) roundButtons.pause.textContent = pauseLabel;
+  }
+
+  for (const [name, button] of Object.entries(roundButtons)) {
+    button.onclick = () => {
+      if (!remote) return;
+      // A laptop command or camera update can arrive between display refreshes.
+      showRoundControls(snapshot());
+      if (button.disabled) return;
+      setupMenu.open = false;
+      command(name);
+      const state = snapshot();
+      showRoundControls(state);
+      link?.send('state', state);
+      if (state.running && !state.paused) $('game').focus({preventScroll: true});
+    };
+  }
+  setupMenu.addEventListener('click', event => {
+    if (event.target.closest('button')) setupMenu.open = false;
+  });
+  setupMenu.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { setupMenu.open = false; setupMenu.querySelector('summary').focus(); }
+  });
 
   function setDisplay() {
     document.body.classList.toggle('game-screen', remote);
@@ -18,7 +54,7 @@ export function createGameScreens({snapshot, config, configure, command, action,
   function receive(type, payload, age) {
     lastContact = performance.now();
     if (type === 'hello') {
-      if (connectionNotice) { status('Controls reconnected. Calibrate the camera if needed, then start or resume.'); connectionNotice = false; }
+      if (connectionNotice) { status('Controls reconnected. Raise a hand when locked, or choose Start manually.'); connectionNotice = false; }
       link.send('welcome', {instance, config: config(), state: snapshot()});
     }
     if (type === 'config') {
@@ -29,16 +65,17 @@ export function createGameScreens({snapshot, config, configure, command, action,
     if (type === 'action' && ['jump', 'duck', 'left', 'right'].includes(payload?.name)) action(payload.name);
     if (type === 'pose') {
       const next = readRemotePose(payload, age, performance.now());
-      if (next) motion = next;
+      if (next) receivePose(next);
     }
     if (type === 'invalidate') {
-      motion.calibrated = false;
-      pause();
+      receivePose(emptyPose('waiting'));
+      pause('tracking');
     }
     if (type === 'suspend' || type === 'bye') {
-      pause();
+      receivePose(emptyPose(type === 'bye' ? 'off' : 'suspended'));
+      pause('controls');
       status(type === 'bye' ? 'Control window closed. Reopen controls to continue.' : 'Keep the camera control window visible on your other screen, then resume.');
-      if (type === 'bye') { lastContact = 0; motion.calibrated = false; connectionNotice = true; }
+      if (type === 'bye') { lastContact = 0; connectionNotice = true; }
     }
   }
 
@@ -70,20 +107,20 @@ export function createGameScreens({snapshot, config, configure, command, action,
     if (controlsWindow.location.href === 'about:blank') controlsWindow.location.replace(url.href);
     else if (remote) { controlsWindow.focus(); return; }
     pause(); stopCamera(); audio.setPlaying(false); saveConfig();
-    remote = true; lastContact = 0; connect();
+    remote = true; lastContact = 0; receivePose(emptyPose('off')); connect();
     const urlHere = new URL(location.href);
     urlHere.searchParams.set('screen', 'game'); urlHere.searchParams.set('session', session);
     history.replaceState(null, '', urlHere);
     document.activeElement?.blur();
-    status('Controls opened. Move this game window to the player’s screen and use Full screen. Enable and calibrate the camera in the control window.');
+    status('Controls opened. Move the game to the player’s screen and enable the camera on the laptop.');
   }
 
   function combine() {
     pause(); link?.send('combined'); link?.close(); link = null;
-    remote = false; wasConnected = false; document.body.classList.remove('is-playing'); setDisplay();
+    remote = false; wasConnected = false; setDisplay();
     const url = new URL(location.href); url.searchParams.delete('screen'); url.searchParams.delete('session');
     history.replaceState(null, '', url);
-    status('Single-screen mode restored. Enable and calibrate the camera here to use body control.');
+    status('Single-screen mode restored. Enable the camera here to use body controls.');
     if (controlsWindow && !controlsWindow.closed) controlsWindow.close();
   }
 
@@ -100,13 +137,13 @@ export function createGameScreens({snapshot, config, configure, command, action,
     if (!remote) return;
     const connected = performance.now() - lastContact < LINK_TIMEOUT && lastContact > 0;
     if (!connected && wasConnected) {
-      pause(); motion.calibrated = false; connectionNotice = true;
+      receivePose(emptyPose('off')); pause('controls'); connectionNotice = true;
       status('Control window disconnected. Reopen it before continuing.');
     }
     wasConnected = connected;
     const state = snapshot();
     $('displayConnection').textContent = connected ? 'Controls connected · player display' : 'Waiting for control window · Open controls to reconnect';
-    document.body.classList.toggle('is-playing', connected && state.running && !state.paused);
+    showRoundControls(state);
     link.send('state', state);
   }, 200);
   addEventListener('pagehide', () => { link?.send('bye'); clearInterval(timer); link?.close(); });

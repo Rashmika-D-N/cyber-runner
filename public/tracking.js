@@ -1,3 +1,7 @@
+// A held start gesture can use a slower sample than a jump or a duck.
+export const MAX_POSE_AGE_MS = 650;
+export const MAX_ACTION_AGE_MS = 400;
+export const MAX_SAMPLE_GAP_MS = 700;
 export const defaultLines=()=>({top:.55,bottom:.95,far:[.35,.5,.65],near:[.15,.5,.85]});
 export function laneCenters(lines,y){const t=Math.max(0,Math.min(1,(y-lines.top)/(lines.bottom-lines.top)));return lines.far.map((x,i)=>x+(lines.near[i]-x)*t);}
 export function smoothPoint(old,p,dt){if(!old)return {...p};if(p.visibility<.3)return {...old,visibility:p.visibility};const speed=Math.hypot(p.x-old.x,p.y-old.y)/dt,alpha=1-Math.exp(-dt*(10+Math.min(35,speed*30)));return {...p,x:old.x+alpha*(p.x-old.x),y:old.y+alpha*(p.y-old.y)};}

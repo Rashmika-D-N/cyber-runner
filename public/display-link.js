@@ -1,3 +1,4 @@
+import {MAX_ACTION_AGE_MS, MAX_POSE_AGE_MS} from './tracking.js';
 // Same-device communication only. Camera frames never cross this channel.
 export const LINK_TIMEOUT = 2200;
 export const SETTING_LIMITS = {
@@ -34,7 +35,7 @@ export function createDisplayLink({role, session, receive, Channel = globalThis.
       || !['game', 'controls'].includes(data.role) || typeof data.type !== 'string'
       || !Number.isFinite(data.at) || !Number.isSafeInteger(data.sequence)) return;
     // Never replay a delayed jump or an old pose after a window stalls.
-    const maxAge = ['pose', 'action', 'audio'].includes(data.type) ? 400 : LINK_TIMEOUT;
+    const maxAge = ['pose', 'action', 'audio'].includes(data.type) ? MAX_ACTION_AGE_MS : LINK_TIMEOUT;
     const age = now() - data.at;
     if (age < -100 || age > maxAge || (seen.get(data.sender) ?? 0) >= data.sequence) return;
     seen.set(data.sender, data.sequence);
@@ -51,6 +52,11 @@ export function createDisplayLink({role, session, receive, Channel = globalThis.
 export function readRemotePose(payload, messageAge, now) {
   if (!payload || typeof payload.calibrated !== 'boolean' || ![-1, 0, 1].includes(payload.lane)
     || !Number.isFinite(payload.age) || payload.age < 0) return null;
-  const age = payload.age + messageAge;
-  return {calibrated: payload.calibrated, lane: payload.lane, lastPose: now - age};
+  const age = payload.age + Math.max(0, messageAge);
+  const pose = {calibrated: payload.calibrated, lane: payload.lane, lastPose: now - age};
+  if (['off', 'editing', 'crowded', 'waiting', 'learning', 'locked', 'holding', 'suspended'].includes(payload.tracking))
+    pose.tracking = payload.tracking;
+  if (age <= MAX_POSE_AGE_MS && pose.calibrated && pose.tracking === 'locked' && ['up', 'down', 'unknown'].includes(payload.hand))
+    pose.hand = payload.hand;
+  return pose;
 }

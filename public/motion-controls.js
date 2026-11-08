@@ -1,68 +1,298 @@
-import {LaneTracker, smoothPoint, defaultLines} from './tracking.js';
+import {LaneTracker, smoothPoint, defaultLines, MAX_POSE_AGE_MS, MAX_ACTION_AGE_MS, MAX_SAMPLE_GAP_MS} from './tracking.js';
+import {PlayerLock, bodyAnchors} from './player-lock.js';
+import {AREA_KEY, readArea, cameraCrop, toFullFrame} from './tracking-area.js';
+import {createAreaEditor} from './area-editor.js';
+import {PlayerHand} from './hand-start.js';
 
-// Shared by the combined page and the dedicated operator window.
-export function createMotionControls({settings, onAction = () => {}, onLane = () => {}, onInvalidate = () => {}, onPose = () => {}}) {
-const $ = id => document.getElementById(id);
-const video = $('video'), sk = $('skeleton'), sc = sk.getContext('2d');
-sk.width = 1280; sk.height = 720;
-let model, stream, base = null, samples = [], calibrating = false, calStart = 0, lastPose = 0,
-    lastVideo = -1, jumpReady = true, duckReady = true, cameraBusy = false;
-const status = text => { $('status').textContent = text; };
-const act = onAction;
-const snapshot = () => ({calibrated: !!base, lane: floorTracker.current, lastPose, camera: !!stream});
-$('calibrate').onclick=()=>{base=null;samples=[];filtered=null;calibrating=true;calStart=performance.now();onInvalidate();status('Stand upright and still, centered, with feet visible. Hold for 3 seconds.');};
-async function enableCamera(){if(cameraBusy)return;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;cameraEpoch++;clearTimeout(poseTimer);video.srcObject=null;base=null;lastPose=0;renderTracking(null);$('calibrate').disabled=true;$('camera').textContent='Enable camera';$('cameraLabel').textContent='CAMERA OFF';if($('mode').value==='body')onInvalidate();return;}cameraBusy=true;const requestEpoch=++cameraEpoch;$('camera').disabled=true;try{status('Loading local pose tracking…');if(!model)await startTrackingWorker();if(requestEpoch!==cameraEpoch)return;status('Tracking model ready. Allow camera access when prompted. If this browser does not show a prompt, open http://127.0.0.1:5173 in Chrome or Edge.');stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}},audio:false});if(requestEpoch!==cameraEpoch){stream.getTracks().forEach(t=>t.stop());stream=null;return;}video.srcObject=stream;await video.play();cameraEpoch++;lastVideo=-1;$('camera').textContent='Stop camera';$('calibrate').disabled=false;$('cameraLabel').textContent='LIVE · LOCAL PROCESSING';status('Camera ready. Stand back until your feet are visible, then calibrate.');poseLoop();}catch(e){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;status('Camera could not start: '+e.message+'. Keyboard mode is available.');}finally{if(!stream&&requestEpoch!==cameraEpoch){worker?.terminate();worker=null;model=null;framePending=false;}cameraBusy=false;$('camera').disabled=false;}}
-$('camera').onclick=enableCamera;
-let filtered=null,filterTime=0,groundY=.9,lastLanePose=0;
-let floorLines=defaultLines();
-function loadSavedLines(){try{const saved=JSON.parse(localStorage.getItem('motion-floor-v1'));if(saved&&['top','bottom','far','near'].every(k=>k in saved)&&saved.far.length===3&&saved.near.length===3&&[saved.top,saved.bottom,...saved.far,...saved.near].every(v=>Number.isFinite(v)&&v>=0&&v<=1)&&saved.top+.1<saved.bottom&&[saved.far,saved.near].every(a=>a[0]+.04<a[1]&&a[1]+.04<a[2]))floorLines=saved;}catch{}}
-loadSavedLines();
-const floorTracker=new LaneTracker();
-function saveLines(){renderTracking(null);try{localStorage.setItem('motion-floor-v1',JSON.stringify(floorLines));}catch{}base=null;status('Floor alignment updated. Calibrate standing posture before playing.');onInvalidate();}
-function controls(){const host=$('laneControls');host.replaceChildren();for(const [key,names] of [['far',['Left far end','Middle far end','Right far end']],['near',['Left near end','Middle near end','Right near end']]])names.forEach((name,i)=>{const label=document.createElement('label');label.textContent=name;const input=document.createElement('input');input.type='range';input.min=.02;input.max=.98;input.step=.005;input.value=floorLines[key][i];input.oninput=()=>{floorLines[key][i]=Math.max(i?floorLines[key][i-1]+.05:.02,Math.min(i<2?floorLines[key][i+1]-.05:.98,+input.value));input.value=floorLines[key][i];saveLines();};label.append(input);host.append(label);});for(const key of ['top','bottom']){const label=document.createElement('label');label.textContent=key==='top'?'Far end height':'Near end height';const input=document.createElement('input');Object.assign(input,{type:'range',min:'.1',max:'.98',step:'.01',value:floorLines[key]});input.oninput=()=>{floorLines[key]=key==='top'?Math.min(+input.value,floorLines.bottom-.1):Math.max(+input.value,floorLines.top+.1);input.value=floorLines[key];saveLines();};label.append(input);host.append(label);}}
-controls();$('resetLines').onclick=()=>{floorLines=defaultLines();saveLines();controls();};$('expandPreview').onclick=()=>document.querySelector('.preview').classList.toggle('expanded');document.querySelector('.preview').onclick=()=>document.querySelector('.preview').classList.remove('expanded');
-function renderTracking(points){if(video.videoWidth){if(sk.width!==video.videoWidth||sk.height!==video.videoHeight){sk.width=video.videoWidth;sk.height=video.videoHeight;}document.querySelector('.preview').style.aspectRatio=video.videoWidth+'/'+video.videoHeight;}sc.clearRect(0,0,sk.width,sk.height);for(let i=0;i<3;i++){sc.strokeStyle=i-1===floorTracker.current?'#ceff53':'#ff5555';sc.lineWidth=5;sc.beginPath();sc.moveTo(floorLines.far[i]*sk.width,floorLines.top*sk.height);sc.lineTo(floorLines.near[i]*sk.width,floorLines.bottom*sk.height);sc.stroke();sc.font='bold 22px sans-serif';sc.fillStyle=sc.strokeStyle;sc.fillText(['LEFT','MIDDLE','RIGHT'][i],floorLines.near[i]*sk.width-25,floorLines.bottom*sk.height-12);}if(!points)return;for(const [a,b] of [[11,12],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[11,13],[13,15],[12,14],[14,16]]){if(points[a].visibility<.3||points[b].visibility<.3)continue;sc.strokeStyle='#79ebff';sc.lineWidth=4;sc.beginPath();sc.moveTo((1-points[a].x)*sk.width,points[a].y*sk.height);sc.lineTo((1-points[b].x)*sk.width,points[b].y*sk.height);sc.stroke();}}
-function processPose(points,now){
- if(calibrating&&now-calStart>12000){calibrating=false;status('Calibration timed out. Stand upright in good light and retry.');}
- const usable=points&&[23,24].every(i=>(points[i].visibility??0)>.35)&&[11,12].some(i=>(points[i].visibility??0)>.35);
- if(!usable){$('trackingState').textContent=now-lastPose<1800?'Brief occlusion — holding':'Player not visible';renderTracking(null);if(calibrating)samples=[];return;}
- const dt=Math.max(.001,(now-filterTime)/1000);if(now-lastPose>700)filtered=null;
- filtered=points.map((p,i)=>smoothPoint(filtered?.[i],p,dt));filterTime=now;lastPose=now;const p=filtered;
- const hip=(p[23].y+p[24].y)/2,x=1-(p[23].x+p[24].x)/2;
- const shoulders=[11,12].filter(i=>p[i].visibility>.35),shoulder=shoulders.reduce((s,i)=>s+p[i].y,0)/shoulders.length;
- const visibleFeet=[27,28].filter(i=>(points[i].visibility??0)>.35),feet=visibleFeet.length?visibleFeet.reduce((s,i)=>s+p[i].y,0)/visibleFeet.length:null;
- const rise=base?base.hip-hip:0,drop=base?shoulder-base.shoulder:0;
- if(feet!==null&&Math.abs(rise)<settings.jump*.55&&drop<.07)groundY=groundY*.8+feet*.2;
- const footX=visibleFeet.length===2?1-(p[27].x+p[28].x)/2:x; const laneX=Math.abs(rise)<settings.jump*.55&&visibleFeet.length===2?footX*.7+x*.3:x; const physical=floorTracker.update(laneX,groundY,floorLines,now,settings.lean);lastLanePose=now;
- $('physicalLane').textContent=['LEFT','MIDDLE','RIGHT'][physical+1];$('trackingState').textContent=feet===null?'Torso tracked · feet hidden':'Tracking stable';
- if($('mode').value==='body'&&base)onLane(physical);
- renderTracking(p);
- if(calibrating){if(feet===null||shoulders.length!==2){samples=[];status('Calibration needs shoulders and feet visible.');return;}samples.push({hip,x,feet,shoulder});if(samples.length>90)samples.shift();if(samples.length>=35&&now-calStart>=2500){const stable=['hip','x','shoulder'].every(k=>Math.max(...samples.map(s=>s[k]))-Math.min(...samples.map(s=>s[k]))<.035);if(!stable){status('Hold still briefly to finish calibration.');return;}base={};for(const k of ['hip','x','feet','shoulder']){const sorted=samples.map(s=>s[k]).sort((a,b)=>a-b);base[k]=sorted[Math.floor(sorted.length/2)];}groundY=base.feet;calibrating=false;jumpReady=duckReady=true;status('Calibrated. Stand on any tape line to select its lane.');}return;}
- if(!base||$('mode').value!=='body')return;
- if(rise<settings.jump*.35)jumpReady=true;
- if(jumpReady&&rise>settings.jump&&drop<0&&(feet===null||base.feet-feet>settings.jump*.15)){act('jump');jumpReady=false;}
- if(drop<.04)duckReady=true;if(duckReady&&drop>.10){act('duck');duckReady=false;}
-}
-let worker=null,framePending=false,cameraEpoch=0,poseTimer=0;
-function stopTrackingError(message){if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;cameraEpoch++;framePending=false;base=null;model=null;worker?.terminate();worker=null;$('camera').textContent='Enable camera';$('calibrate').disabled=true;status('Tracking stopped: '+message);if($('mode').value==='body')onInvalidate();}
-function startTrackingWorker(){return new Promise((resolve,reject)=>{worker=new Worker('./pose-worker.js');const timeout=setTimeout(()=>{worker?.terminate();worker=null;reject(new Error('Local tracking startup timed out'));},45000);worker.onerror=e=>{clearTimeout(timeout);reject(new Error(e.message));stopTrackingError(e.message);};worker.onmessage=({data:d})=>{if(d.type==='ready'){clearTimeout(timeout);model=true;resolve();}else if(d.type==='error'){clearTimeout(timeout);reject(new Error(d.message));stopTrackingError(d.message);}else if(d.type==='pose'){framePending=false;if(stream&&d.epoch===cameraEpoch){const age=performance.now()-d.timestamp;$('latency').textContent=Math.round(d.ms)+' ms · age '+Math.round(age)+' ms';if(age<400){processPose(d.points,performance.now());onPose(snapshot());}}}};worker.postMessage({type:'init'});});}
-async function poseLoop(){clearTimeout(poseTimer);if(!stream)return;if(!framePending&&video.readyState>=2&&lastVideo!==video.currentTime){lastVideo=video.currentTime;framePending=true;const epoch=cameraEpoch,timestamp=performance.now();try{const bitmap=await createImageBitmap(video,{resizeWidth:640,resizeHeight:Math.round(640*video.videoHeight/video.videoWidth)});if(!stream||epoch!==cameraEpoch){bitmap.close();framePending=false;}else worker.postMessage({type:'frame',bitmap,timestamp,epoch},[bitmap]);}catch(e){stopTrackingError(e.message);return;}}poseTimer=setTimeout(poseLoop,16);}
-
-renderTracking(null);
-addEventListener('storage', event => {
-  if(event.key !== 'motion-floor-v1') return;
-  loadSavedLines(); base=null; controls(); renderTracking(null);
-  if(stream) onInvalidate();
-});
-return {
-  get state() { return snapshot(); },
-  stop() {
-    cameraEpoch++; clearTimeout(poseTimer);
-    if(!cameraBusy){worker?.terminate();worker=null;model=null;framePending=false;}
-    stream?.getTracks().forEach(track => track.stop()); stream = null;
-    video.srcObject = null; base = null; lastPose = 0; calibrating = false;
-    $('camera').textContent = 'Enable camera'; $('calibrate').disabled = true;
-    $('cameraLabel').textContent = 'CAMERA OFF'; renderTracking(null); onInvalidate();
-  },
+const FLOOR_KEY = 'motion-floor-v1';
+const LANE_NAMES = ['LEFT', 'MIDDLE', 'RIGHT'];
+const BONES = [[11,12],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[11,13],[13,15],[12,14],[14,16]];
+const LOCK_MESSAGES = {
+  waiting: ['Waiting for player', 'Face the camera with your shoulders and upper body inside the marked area.'],
+  crowded: ['Waiting for one player', 'One player should stand in the area to begin.'],
+  learning: ['Finding player', 'Stand comfortably and hold still for a moment.'],
+  locked: ['Player locked', 'Player ready. Move between the three tape lines to play.'],
+  holding: ['Holding player', 'Waiting for a clear view of the same player.'],
 };
+
+function readFloor() {
+  try {
+    const lines = JSON.parse(localStorage.getItem(FLOOR_KEY));
+    const unit = n => Number.isFinite(n) && n >= 0 && n <= 1;
+    const validRow = row => Array.isArray(row) && row.length === 3 && row.every(unit)
+      && row[0] + 0.04 < row[1] && row[1] + 0.04 < row[2];
+    if (lines && unit(lines.top) && unit(lines.bottom) && lines.top + 0.1 < lines.bottom
+        && validRow(lines.far) && validRow(lines.near)) return lines;
+  } catch { /* Start with the default tape positions. */ }
+  return defaultLines();
+}
+
+// Used by both the combined game page and the separate operator window.
+export function createMotionControls({settings, onAction = () => {}, onLane = () => {},
+  onInvalidate = () => {}, onPose = () => {}}) {
+  const get = id => document.getElementById(id);
+  const video = get('video'), overlay = get('skeleton'), ctx = overlay.getContext('2d');
+  const preview = video.closest('.preview'), image = video.parentElement;
+  const lock = new PlayerLock();
+  const hand = new PlayerHand();
+  let area = readArea(), floor = readFloor(), laneTracker = new LaneTracker();
+  let stream = null, worker = null, cancelLoad = null, pending = null, timer = 0;
+  let session = 0, frameEpoch = 0, busy = false, editing = false;
+  let lastVideoTime = -1, lastPose = 0, filtered = null, groundY = 0.9;
+  let jumpReady = false, duckReady = false, lastState = '';
+  const controller = get('mode');
+  const bodyMode = () => controller.value === 'body';
+  let controllerRevision = 0;
+  controller.addEventListener('change', () => { controllerRevision++; });
+  const status = value => { get('status').textContent = value; };
+  const snapshot = () => ({calibrated: !!lock.baseline && !editing, lane: laneTracker.current, lastPose, camera: !!stream,
+    tracking: editing ? 'editing' : stream ? lock.state : 'off'});
+
+  function showLockState() {
+    const state = stream ? lock.state : 'off';
+    if (state === lastState) return;
+    lastState = state;
+    const [label, message] = LOCK_MESSAGES[state] || ['Camera off', 'Enable the camera to use body controls.'];
+    get('trackingState').textContent = label;
+    get('cameraLabel').textContent = stream ? label.toUpperCase() : 'CAMERA OFF';
+    get('releasePlayer').disabled = !lock.baseline;
+    status(message);
+  }
+
+  function clearMovement() {
+    lastPose = 0; filtered = null; groundY = 0.9;
+    hand.reset();
+    laneTracker = new LaneTracker(); jumpReady = duckReady = false;
+    get('physicalLane').textContent = '—';
+  }
+  function resetPlayer() {
+    frameEpoch++;
+    lock.reset(); clearMovement(); lastState = ''; showLockState(); draw(null);
+    if (bodyMode()) onInvalidate();
+  }
+
+  function layoutPreview() {
+    const width = video.videoWidth || 1280, height = video.videoHeight || 720;
+    const crop = cameraCrop(area, width, height);
+    if (overlay.width !== width || overlay.height !== height) {
+      overlay.width = width; overlay.height = height;
+    }
+    const scale = Math.min(preview.clientWidth / crop.width, preview.clientHeight / crop.height);
+    image.style.width = crop.width * scale + 'px';
+    image.style.height = crop.height * scale + 'px';
+    // Video is mirrored inside its element. The skeleton uses mirrored full-frame coordinates.
+    const left = width - crop.x - crop.width;
+    for (const layer of [video, overlay]) {
+      layer.style.width = 100 * width / crop.width + '%'; layer.style.height = 100 * height / crop.height + '%';
+      layer.style.left = -100 * left / crop.width + '%'; layer.style.top = -100 * crop.y / crop.height + '%';
+    }
+    draw(lock.state === 'locked' || lock.state === 'learning' ? filtered : null);
+  }
+  function draw(points) {
+    const w = overlay.width, h = overlay.height;
+    ctx.clearRect(0, 0, w, h);
+    for (let i = 0; i < 3; i++) {
+      ctx.strokeStyle = i - 1 === laneTracker.current ? '#ceff53' : '#ff5555';
+      ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(floor.far[i] * w, floor.top * h);
+      ctx.lineTo(floor.near[i] * w, floor.bottom * h); ctx.stroke();
+      ctx.font = 'bold 22px sans-serif'; ctx.fillStyle = ctx.strokeStyle;
+      ctx.fillText(LANE_NAMES[i], floor.near[i] * w - 25, floor.bottom * h - 12);
+    }
+    if (!points) return;
+    ctx.lineWidth = 4; ctx.strokeStyle = '#79ebff'; ctx.beginPath();
+    for (const [a, b] of BONES) {
+      if (points[a].visibility < 0.3 || points[b].visibility < 0.3) continue;
+      ctx.moveTo((1 - points[a].x) * w, points[a].y * h);
+      ctx.lineTo((1 - points[b].x) * w, points[b].y * h);
+    }
+    ctx.stroke();
+  }
+
+  const editor = createAreaEditor({video, readArea: () => area,
+    onSave(next) {
+      area = next;
+      try { localStorage.setItem(AREA_KEY, JSON.stringify(area)); } catch { /* Use the area for this session. */ }
+      layoutPreview();
+    },
+    onEditing(open) {
+      editing = open; resetPlayer();
+      if (!open && stream) status('Step into the tracking area and stand upright briefly.');
+    },
+  });
+  get('releasePlayer').onclick = resetPlayer;
+  new ResizeObserver(layoutPreview).observe(preview);
+  video.addEventListener('loadedmetadata', layoutPreview);
+  video.addEventListener('resize', layoutPreview);
+  get('expandPreview').onclick = () => preview.classList.toggle('expanded');
+  preview.onclick = () => preview.classList.remove('expanded');
+
+  function floorChanged(save) {
+    if (save) {
+      try { localStorage.setItem(FLOOR_KEY, JSON.stringify(floor)); } catch { /* Keep the active guides. */ }
+    }
+    laneTracker = new LaneTracker(); draw(filtered);
+    if (stream && bodyMode()) onInvalidate();
+  }
+  function floorControls() {
+    const host = get('laneControls'); host.replaceChildren();
+    function slider(name, value, min, max, step, change) {
+      const label = document.createElement('label'), input = document.createElement('input');
+      Object.assign(input, {type: 'range', min, max, step, value});
+      input.oninput = () => { input.value = change(Number(input.value)); floorChanged(true); };
+      label.append(name, input); host.append(label);
+    }
+    for (const row of ['far', 'near']) {
+      ['Left', 'Middle', 'Right'].forEach((name, i) => {
+        slider(name + ' ' + row + ' end', floor[row][i], 0.02, 0.98, 0.005, value => {
+          const min = i ? floor[row][i - 1] + 0.05 : 0.02, max = i < 2 ? floor[row][i + 1] - 0.05 : 0.98;
+          return floor[row][i] = Math.max(min, Math.min(max, value));
+        });
+      });
+    }
+    slider('Far end height', floor.top, 0.1, 0.98, 0.01, v => floor.top = Math.min(v, floor.bottom - 0.1));
+    slider('Near end height', floor.bottom, 0.1, 0.98, 0.01, v => floor.bottom = Math.max(v, floor.top + 0.1));
+  }
+  get('resetLines').onclick = () => { floor = defaultLines(); floorChanged(true); floorControls(); };
+  addEventListener('storage', event => {
+    if (event.key === AREA_KEY) {
+      editor.close(); area = readArea(); resetPlayer(); layoutPreview();
+    } else if (event.key === FLOOR_KEY) { floor = readFloor(); floorChanged(false); floorControls(); }
+  });
+
+  function processPoses(poses, timestamp, freshAction) {
+    const before = lock.baseline;
+    const points = lock.update(poses, area, timestamp);
+    if (before && !lock.baseline) { clearMovement(); if (bodyMode()) onInvalidate(); }
+    showLockState();
+    if (!points) { draw(null); return 'unknown'; }
+    const dt = Math.max(0.001, (timestamp - lastPose) / 1000);
+    if (dt * 1000 > MAX_SAMPLE_GAP_MS || !before) { filtered = null; jumpReady = duckReady = false; }
+    filtered = points.map((p, i) => smoothPoint(filtered?.[i], p, dt));
+    lastPose = timestamp;
+    const base = lock.baseline, player = lock.last;
+    const {x, hip, shoulder, feet, footX} = bodyAnchors(filtered, player.joints);
+    const drop = base ? shoulder - base.shoulder : 0;
+    const rise = base && base.hip !== null && hip !== null ? base.hip - hip : -drop;
+    if (base && !before) {
+      const estimatedFloor = base.shoulder + 2.8 * base.torso;
+      groundY = base.feet ?? Math.max(floor.top, Math.min(floor.bottom, estimatedFloor));
+    }
+    const neutral = Math.abs(rise) < settings.jump * .55 && Math.abs(drop) < .07;
+    if (feet !== null && neutral) {
+      groundY = groundY * .8 + feet * .2;
+      if (base && base.feet === null) base.feet = feet;
+    }
+    const laneX = neutral && player.joints.ankles.length === 2 ? x * .3 + footX * .7 : x;
+    const lane = laneTracker.update(1 - laneX, groundY, floor, timestamp, settings.lean);
+    get('physicalLane').textContent = LANE_NAMES[lane + 1]; draw(filtered);
+    if (!base || !bodyMode()) return 'unknown';
+    onLane(lane);
+    if (freshAction) {
+      if (rise < settings.jump * .35) jumpReady = true;
+      const feetClear = feet === null || base.feet === null || base.feet - feet > settings.jump * .15;
+      if (jumpReady && rise > settings.jump && drop < 0 && feetClear) {
+        jumpReady = false; onAction('jump');
+      }
+      if (drop < .04) duckReady = true;
+      if (duckReady && drop > .10) { duckReady = false; onAction('duck'); }
+    }
+    return hand.read(points, area, player.torso);
+  }
+
+  function receivePose(data, source) {
+    const job = pending;
+    if (!job || job.worker !== source || job.epoch !== data.epoch) return;
+    pending = null;
+    if (!stream || editing || job.epoch !== frameEpoch) return;
+    const age = performance.now() - data.timestamp;
+    get('latency').textContent = Math.round(data.ms) + ' ms · age ' + Math.round(age) + ' ms';
+    if (age > MAX_POSE_AGE_MS) return;
+    const poses = data.poses.map(pose => ({...pose, points: toFullFrame(pose.points, job.crop)}));
+    const signal = processPoses(poses, data.timestamp, age < MAX_ACTION_AGE_MS);
+    onPose({...snapshot(), hand: signal});
+  }
+  function loadWorker() {
+    const source = new Worker('./pose-worker.js');
+    worker = source;
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => fail('Local tracking startup timed out.'), 45000);
+      function fail(message) {
+        clearTimeout(timeout);
+        if (worker !== source) return;
+        if (cancelLoad) { cancelLoad = null; reject(new Error(message)); }
+        else stop('Tracking stopped. ' + message);
+      }
+      cancelLoad = () => { clearTimeout(timeout); reject(new Error('Camera closed.')); };
+      source.onerror = event => fail(event.message);
+      source.onmessage = ({data}) => {
+        if (worker !== source) return;
+        if (data.type === 'ready') { clearTimeout(timeout); cancelLoad = null; resolve(); }
+        else if (data.type === 'error') fail(data.message);
+        else if (data.type === 'pose') receivePose(data, source);
+      };
+      source.postMessage({type: 'init'});
+    });
+  }
+  async function captureFrame(run) {
+    if (run !== session || !stream) return;
+    timer = setTimeout(() => captureFrame(run), 16);
+    if (pending || editing || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+    lastVideoTime = video.currentTime;
+    const crop = cameraCrop(area, video.videoWidth, video.videoHeight);
+    const scale = Math.min(1, 640 / Math.max(crop.width, crop.height));
+    const job = {crop, worker, epoch: frameEpoch};
+    const timestamp = performance.now();
+    pending = job;
+    try {
+      const bitmap = await createImageBitmap(video, crop.x, crop.y, crop.width, crop.height, {
+        resizeWidth: Math.max(1, Math.round(crop.width * scale)),
+        resizeHeight: Math.max(1, Math.round(crop.height * scale)),
+      });
+      if (pending !== job || job.epoch !== frameEpoch) {
+        bitmap.close(); if (pending === job) pending = null;
+        return;
+      }
+      worker.postMessage({type: 'frame', bitmap, timestamp, epoch: job.epoch}, [bitmap]);
+    } catch (error) { if (run === session) stop('Tracking stopped. ' + error.message); }
+  }
+  function stop(message) {
+    session++; clearTimeout(timer); pending = null; busy = false;
+    cancelLoad?.(); cancelLoad = null; worker?.terminate(); worker = null;
+    stream?.getTracks().forEach(track => track.stop());
+    stream = null; video.srcObject = null; lastVideoTime = -1; editor.close();
+    get('camera').disabled = false; get('camera').textContent = 'Enable camera';
+    resetPlayer(); layoutPreview();
+    if (message) status(message);
+  }
+  get('camera').onclick = async () => {
+    if (busy) return;
+    if (stream) { stop(); return; }
+    const run = ++session; busy = true; get('camera').disabled = true;
+    const startingRevision = controllerRevision;
+    try {
+      status('Loading local pose tracking…');
+      await loadWorker();
+      if (run !== session) return;
+      status('Allow camera access to see the play area.');
+      const media = await navigator.mediaDevices.getUserMedia({
+        video: {width: {ideal: 1280}, height: {ideal: 720}, frameRate: {ideal: 30}}, audio: false,
+      });
+      if (run !== session) { media.getTracks().forEach(track => track.stop()); return; }
+      stream = media; video.srcObject = media; await video.play();
+      if (run !== session) return;
+      media.getVideoTracks()[0].onended = () => { if (run === session) stop('Camera disconnected. Enable the camera to reconnect.'); };
+      get('camera').textContent = 'Stop camera';
+      // Use the normal controller change so the projector gets the same mode before the first pose.
+      // Respect a different selection made while the model or camera permission was pending.
+      if (!bodyMode() && startingRevision === controllerRevision) {
+        controller.value = 'body';
+        controller.dispatchEvent(new Event('change', {bubbles: true}));
+      }
+      lastVideoTime = -1; lastState = ''; showLockState(); layoutPreview(); captureFrame(run);
+    } catch (error) {
+      if (run === session) stop('Camera could not start. ' + error.message + ' Keyboard controls are available.');
+    } finally { if (run === session) { busy = false; get('camera').disabled = false; } }
+  };
+  floorControls(); layoutPreview(); showLockState();
+  return {get state() { return snapshot(); }, stop};
 }
