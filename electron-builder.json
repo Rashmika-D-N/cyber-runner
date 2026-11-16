@@ -1,0 +1,35 @@
+{
+  "appId": "lk.rashmika.cyberrunner",
+  "productName": "Cyber Runner",
+  "copyright": "Copyright © 2026 Rashmika Nishshanka",
+  "asar": true,
+  "directories": {"output": "dist"},
+  "files": [
+    "desktop/main.cjs", "desktop/policy.cjs", "desktop/icon.png", "package.json",
+    "public/**", "!public/assets/*.glb", "public/assets/civilian-runner.glb",
+    "!public/assets/*.fbx", "!public/assets/runner-license.md", "!public/vendor/**/*.tgz",
+    "!public/vendor/mediapipe/pose_landmarker_lite.task", "!public/*-check.*",
+    "!public/visual-check.*", "!public/game.pre3d.js", "!public/cyber-runner-poster.*"
+  ],
+  "extraFiles": [
+    {"from": "desktop/PLAY-ME.txt", "to": "PLAY-ME.txt"},
+    {"from": "LICENSE.md", "to": "notices/PROJECT-LICENSE.md"},
+    {"from": "ASSET-CREDITS.md", "to": "notices/ASSET-CREDITS.md"},
+    {"from": "public/vendor/three/LICENSE", "to": "notices/THREE-LICENSE.txt"},
+    {"from": "public/vendor/mediapipe/LICENSE", "to": "notices/MEDIAPIPE-LICENSE.txt"},
+    {"from": "public/vendor/mediapipe/THIRD-PARTY.md", "to": "notices/MEDIAPIPE-THIRD-PARTY.md"}
+  ],
+  "win": {
+    "target": [{"target": "nsis", "arch": ["x64"]}, {"target": "zip", "arch": ["x64"]}],
+    "icon": "desktop/icon.ico",
+    "artifactName": "Cyber-Runner-${version}-Windows-${arch}.${ext}"
+  },
+  "nsis": {
+    "artifactName": "Cyber-Runner-${version}-Windows-Setup.${ext}",
+    "oneClick": false, "perMachine": false, "allowElevation": false,
+    "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true,
+    "shortcutName": "Cyber Runner", "runAfterFinish": true,
+    "deleteAppDataOnUninstall": false, "license": "LICENSE.md"
+  },
+  "publish": null
+}

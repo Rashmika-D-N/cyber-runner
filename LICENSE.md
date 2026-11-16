@@ -4,6 +4,10 @@ Copyright (c) 2026 Rashmika Nishshanka. All rights reserved for the original
 Cyber Runner code, documentation and artwork, except where a separate license
 or attribution is stated.
 
+Permission is granted to download, install and play official Cyber Runner binary
+releases for personal and exhibition use without a fee. This permission does not
+grant ownership of, or a right to extract and redistribute, third-party assets.
+
 No open-source license has been selected for the original project yet. Making
 this repository visible on GitHub does not place its contents under MIT,
 Apache-2.0, CC0, or another general reuse license. Contact the project owner for

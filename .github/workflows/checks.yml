@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
-      # This project has no npm dependencies and does not fetch assets in CI.
+      # Browser checks use only Node and bundled files. Desktop tools are dev-only.
       - run: npm run check
       - run: npm run assets:check:public
       - run: npm test

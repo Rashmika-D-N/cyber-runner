@@ -1,6 +1,7 @@
 {
   "name": "cyber-runner",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "main": "desktop/main.cjs",
   "description": "Offline camera-controlled 3D exhibition runner with separate player and operator displays.",
   "author": "Rashmika Nishshanka",
   "private": true,
@@ -14,8 +15,11 @@
     "check": "node scripts/check-syntax.mjs",
     "assets:check": "node scripts/check-assets.mjs",
     "assets:check:public": "node scripts/check-assets.mjs --public",
-    "test": "node --test physics.test.mjs tracking.test.mjs motion.test.mjs animation-sync.test.mjs arcade.test.mjs powerups.test.mjs display-link.test.mjs player-guide.test.mjs",
-    "test:character": "node scripts/check-assets.mjs && node --test animation-sync.test.mjs"
+    "test": "node --test physics.test.mjs tracking.test.mjs motion.test.mjs animation-sync.test.mjs arcade.test.mjs powerups.test.mjs display-link.test.mjs player-guide.test.mjs desktop.test.mjs",
+    "test:character": "node scripts/check-assets.mjs && node --test animation-sync.test.mjs",
+    "desktop": "electron .",
+    "desktop:pack": "npm run assets:check && electron-builder --config electron-builder.json --win --x64 --dir --publish never",
+    "desktop:build": "npm run check && npm run assets:check && npm test && electron-builder --config electron-builder.json --win --x64 --publish never"
   },
   "repository": {
     "type": "git",
@@ -24,5 +28,9 @@
   "homepage": "https://github.com/Rashmika-D-N/cyber-runner#readme",
   "bugs": {
     "url": "https://github.com/Rashmika-D-N/cyber-runner/issues"
+  },
+  "devDependencies": {
+    "electron": "45.3.3",
+    "electron-builder": "26.18.0"
   }
 }

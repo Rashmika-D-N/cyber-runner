@@ -5,9 +5,9 @@ import {spawnSync} from 'node:child_process';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const files = new Set(['server.mjs']);
-for (const dir of ['.', 'scripts', 'public']) {
+for (const dir of ['.', 'scripts', 'public', 'desktop']) {
   for (const item of readdirSync(resolve(root, dir), {withFileTypes: true})) {
-    if (item.isFile() && /\.(m?js)$/.test(item.name) && item.name !== 'game.pre3d.js')
+    if (item.isFile() && /\.([cm]?js)$/.test(item.name) && item.name !== 'game.pre3d.js')
       files.add(relative(root, resolve(root, dir, item.name)));
   }
 }

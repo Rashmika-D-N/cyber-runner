@@ -13,7 +13,7 @@ The original Cyber Runner code has its own [licensing notice](LICENSE.md). The f
 
 The floor color, lane markings, laboratory geometry, circuit coins, energy-cell geometry and synthesized game audio are created in the project. The soundtrack is original; no Subway Surfers recording is included.
 
-## Local exhibition character — excluded from Git
+## Game character — excluded from Git source, included in the finished desktop game
 
 `public/assets/civilian-runner.glb` contains the adapted **Remy** character from Adobe Mixamo. Its original catalog / GLB conversion provenance is [three.ws / nirholas](https://github.com/nirholas/three.ws/blob/main/public/avatars/mixamo/catalog.json).
 
@@ -22,6 +22,13 @@ Run, walk and idle clips were adapted from the [official Three.js Soldier exampl
 Local adaptations include skeleton retargeting, in-place root motion, physically lit materials, normal maps, masked hair, height normalization and procedural skeletal adjustments. Character geometry and animation are **not claimed as original, MIT or CC0 assets**.
 
 Permission to use Mixamo content in a game is separate from public redistribution of its raw files. The character and motion sources are therefore ignored by Git. See [Adobe's Mixamo FAQ](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html), [distribution guidance](https://community.adobe.com/questions-696/mixamo-faq-licensing-royalties-ownership-eula-and-tos-589400?lang=en), and [local asset setup](docs/ASSET-SETUP.md).
+
+Official Windows releases incorporate the adapted character into the playable
+application's `app.asar`, along with the renderer and game logic. They do not
+provide a separate GLB, animation download, asset library or model archive.
+Adobe's FAQ permits use of Mixamo characters and animations in video games.
+Third-party rights remain with their respective owners; inclusion in the game
+does not grant permission to extract and reuse these assets.
 
 ## Unused local prototype material — excluded from Git
 

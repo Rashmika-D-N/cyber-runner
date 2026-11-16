@@ -1,0 +1,41 @@
+CYBER RUNNER
+Created by Rashmika Nishshanka
+
+WINDOWS 10/11, 64-BIT
+
+Portable download: extract the ENTIRE ZIP into a folder, then open Cyber Runner.exe.
+Keep the other files and folders alongside the EXE. Do not run it inside the ZIP.
+Installer download: open the Setup EXE, install, then use the desktop shortcut.
+No Node.js, browser installation, account, internet or asset download is required.
+
+PLAY
+Choose Start round. A/D or Left/Right change lane; Space/Up jumps; S/Down ducks.
+P pauses or resumes. Enter starts a round. F11 toggles full screen; Escape exits it.
+
+CAMERA
+Enable the camera to use Body movement. Set the tracking area to exclude spectators.
+Align the lane guides with three marked floor lanes. Stand in the middle until
+Player locked appears, then hold a hand beside your face for one second to start.
+Lower your hand before another hold. Feet do not need to remain visible.
+Start manually also works with no player visible and with the camera off.
+Windows Settings > Privacy & security > Camera must allow desktop apps to use it.
+Camera frames stay on your device. The app blocks external network requests.
+
+EXHIBITION / TWO SCREENS
+Connect the second screen and choose Extend (Win+P).
+Select Separate screens, or press Ctrl+Shift+E.
+With two monitors, the game moves to the external display and controls to the
+primary display. Move them manually if Windows has a different primary display.
+Keep both windows visible. Use Full screen on the game window.
+Closing controls pauses play. Closing the main game closes the application.
+If gameplay is slow, choose Performance graphics in the controls.
+
+DOWNLOADS
+Official project: https://github.com/Rashmika-D-N/cyber-runner
+Downloads: https://github.com/Rashmika-D-N/cyber-runner/releases
+
+This first release is unsigned. Windows may show an unknown-publisher warning.
+Check the official release and SHA256SUMS.txt before choosing whether to run it.
+
+The character is included for use in this finished game, not as a standalone
+character download. Third-party notices are in the notices folder.

@@ -4,6 +4,24 @@ An offline, camera-controlled 3D runner for interactive exhibitions. Stand in on
 
 Created by **Rashmika Nishshanka**.
 
+## Download the Windows application
+
+Get the complete game from [GitHub Releases](https://github.com/Rashmika-D-N/cyber-runner/releases).
+Choose **Cyber-Runner-1.0.0-Windows-Setup.exe** to install, or extract the entire
+**Cyber-Runner-1.0.0-Windows-x64.zip** and open **Cyber Runner.exe** in that folder.
+Windows 10/11, 64-bit, is required. These finished builds include the human
+character, offline tracking model and runtime. Players do not need Node.js,
+a browser installation, an account or internet. A webcam is optional.
+
+Press **Ctrl+Shift+E** or choose **Separate screens** for the exhibition layout.
+With two monitors, the game moves to the external display and controls to the
+primary display. **F11** toggles full screen; **Escape** exits it. Press **Alt**
+to reveal the desktop menu and its play instructions. The first release is
+unsigned and Windows may display an unknown-publisher warning.
+
+The requirements below apply to running the **source repository**, rather than
+the complete downloadable application. See [desktop build instructions](docs/DESKTOP.md).
+
 ## Features
 
 - Robotics Lab, AI Megacity and Data Core environments.
@@ -20,7 +38,11 @@ Created by **Rashmika Nishshanka**.
 - A webcam and room to move, if using body control.
 - The permitted local character described below.
 
-There are **no npm package dependencies or build steps**. Three.js 0.180.0, MediaPipe Tasks Vision 0.10.21, its WASM runtime and the Full pose model are stored in `public/vendor/`. No API key or cloud account is needed to run the game.
+The browser game has **no runtime npm dependencies or build steps**. Electron
+and electron-builder are development dependencies for creating the Windows
+application. Three.js 0.180.0, MediaPipe Tasks Vision 0.10.21, its WASM runtime
+and the Full pose model are stored in `public/vendor/`. No API key or cloud
+account is needed to run the game.
 
 ## Quick start
 
